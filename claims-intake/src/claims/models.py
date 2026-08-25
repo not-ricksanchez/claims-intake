@@ -10,8 +10,14 @@ Day 2 assignment. Implement these against `docs/api-contract.md` sections 2 and 
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from dataclasses import dataclass
+from datetime import date
+from decimal import Decimal
+from typing import Literal
 
+from pydantic import BaseModel, ConfigDict, Field
+
+ClaimType = Literal["collision", "theft", "glass", "liability", "weather"]
 
 class NotificationRequest(BaseModel):
     """A first notice of loss as submitted by the claims portal.
@@ -26,8 +32,12 @@ class NotificationRequest(BaseModel):
     one, is Day 2's work.
     """
 
-    policy_number: str
-
+    model_config = ConfigDict(extra="forbid")
+    policy_number: str = Field(min_length=1)
+    loss_date: date
+    claim_type: ClaimType = Field(min_length=1)
+    estimated_amount: Decimal = Field(gt=0, decimal_places=2)
+    description: str | None = None
 
 class Policy(BaseModel):
     """A policy as this service works with it.
@@ -38,6 +48,13 @@ class Policy(BaseModel):
     Day 2 assignment: declare the fields.
     """
 
+    policy_number: str
+    effective_date: date
+    expiry_date: date
+    cancellation_date: date | None = None
+    limit: Decimal
+    permitted_claim_types: tuple[ClaimType]
+
 
 class RecordedNotification(BaseModel):
     """A notification that passed every rule and was written.
@@ -47,3 +64,15 @@ class RecordedNotification(BaseModel):
 
     Day 2 assignment: declare the fields.
     """
+    claim_reference: str = Field(pattern=r"^CLM-\d{4}-\d{6}$")
+    policy_number: str
+    loss_date: date
+    claim_type: ClaimType
+    estimated_amount: Decimal
+    description: str | None = None
+
+
+@dataclass(frozen=True)
+class RuleFailure:
+    rule: str   # e.g. "V-1"
+    code: str   # e.g. "POLICY_NOT_FOUND"

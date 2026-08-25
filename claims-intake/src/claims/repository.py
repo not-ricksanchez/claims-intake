@@ -12,24 +12,33 @@ Day 2 assignment. Implement against `docs/api-contract.md` section 3.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 
-from claims.models import RecordedNotification
+from claims.models import NotificationRequest, RecordedNotification
 
 
 class NotificationRepository:
     """Stores recorded notifications and issues claim references."""
 
     def __init__(self) -> None:
-        raise NotImplementedError("Day 2 assignment")
+        self._recorded: list[RecordedNotification] = []
 
-    def record(self, notification: object) -> RecordedNotification:
+    def record(self, notification: NotificationRequest) -> RecordedNotification:
         """Write a notification and return it with its issued claim reference.
 
         The reference format is fixed by contract section 3. References are unique
         and are never reissued.
         """
-        raise NotImplementedError("Day 2 assignment")
+        recorded = RecordedNotification(
+            claim_reference=f"CLM-{datetime.now(tz=UTC).year}-{len(self._recorded) + 1:06d}",
+            policy_number=notification.policy_number,
+            loss_date=notification.loss_date,
+            claim_type=notification.claim_type,
+            estimated_amount=notification.estimated_amount,
+            description=notification.description,
+        )
+        self._recorded.append(recorded)
+        return recorded
 
     def find_matching(
         self,
@@ -43,4 +52,11 @@ class NotificationRepository:
         this searches recorded notifications only: a submission that was refused
         was never written, so there is nothing for a later one to duplicate.
         """
-        raise NotImplementedError("Day 2 assignment")
+        for recorded in self._recorded:
+            if (
+                recorded.policy_number == policy_number
+                and recorded.loss_date == loss_date
+                and recorded.claim_type == claim_type
+            ):
+                return recorded
+        return None

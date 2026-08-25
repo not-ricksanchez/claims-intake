@@ -77,9 +77,17 @@ A refused notification is never recorded and no claim reference is issued. There
 
 ### 4.1 Evaluation order
 
-Rules are evaluated in ascending identifier order. Evaluation stops at
-the first failure and that rule's code is returned. V-1 short circuits:
-if it fails, no rule that reads a policy field is evaluated.
+Rules are evaluated based on the position as stated below. Evaluation stops at the first failure and that rule's code is returned. V-1 short circuits: if it fails, no rule that reads a policy field is evaluated.
+
+| Position | Rule |
+| --- | --- |
+| 1 | V-1 | 
+| 2 | V-7 | 
+| 3 | V-6 | 
+| 4 | V-2 | 
+| 5 | V-3 | 
+| 6 | V-4 | 
+| 7 | V-5 | 
 
 ### 4.2 Rule table
 
@@ -90,10 +98,69 @@ if it fails, no rule that reads a policy field is evaluated.
 | V-3 | `loss_date` <= policy `expiry_date`            | `LOSS_AFTER_EXPIRY`     | 422    |
 | V-4 | `estimated_amount` <= policy `limit`           | `AMOUNT_EXCEEDS_LIMIT`  | 422    |
 | V-5 | `claim_type` permitted on the policy's product | `TYPE_NOT_COVERED`      | 422    |
+| V-6 | no recorded notification exits where `policy_number` == recorded `policy_number` AND `loss_date` == recorded `loss_date` AND `claim_type` == recorded `claim_type` | `DUPLICATE_NOTIFICATION`      | 409    |
+| V-7 | `loss_date` < policy `cancellation_date` OR policy `cancellation_date` is `null` | `POLICY_CANCELLED`      | 422    |
 
 Boundaries are inclusive as written. A loss on the inception date is
 covered (WI-0142, AC-3). An amount equal to the limit is within cover.
+V-7 is the one exclusive boundary: cancellation takes effect at the start of the cancellation date, so `loss_date` == `cancellation_date` fails V-7 and is not covered (WI-0158, AC-2). Where `cancellation_date` is `null` the policy was not cancelled and V-7 passes without comparing dates (WI-0158, AC-3).
+
+V-6 compares against recorded notifications only. A submission that was
+refused was never recorded, so it cannot be the match that makes a later
+submission a duplicate (WI-0151, AC-3). The comparison is on the three
+fields named and no others: `estimated_amount` and `description` are not
+part of the identity of a loss event.
+
 
 ## 5. Error envelope
 
+Every non-2xx response returns this shape and no other.
+ {"code": ..., "message": ..., "detail": { ... } }
+
+Stable: code is always present, is a string and is present in section 6 along with appropriate status from section 6. Detail is always present and is an object.
+
+Not stable: message is verbose and its language keeps changing. The keys inside the detail object are not stable across error codes.
+
+What follows for a caller: Branch on code, render message.
+
+Caller's reliance on inside detail: 
+
+Rely: keys listed for code present with the type.
+
+Not rely: key order, detail being non empty for an unrecognized code.
+
+422 LOSS_AFTER_EXPIRY(a rule failure)
+{ "code": "LOSS_AFTER_EXPIRY",
+             "message": "The loss date falls after the policy expiry date.",
+             "detail": { "rule": "V-3", "policy_number": "MOT-4489",
+                         "loss_date": "2026-08-20", "expiry_date": "2026-07-28" } }
+
+400 SCHEMA_VALIDATION_FAILED(uninterpretable)
+{"code": "SCHEMA_VALIDATION_FAILED",
+             "message": "The request could not be interpreted.",
+             "detail": { "violations": [
+               { "field": "estimated_amount", "problem": "required field absent" },
+               ] }}
+
+503 POLICY_MASTER_UNAVAILABLE(a policy master that did not answer)
+{ "code": "POLICY_MASTER_UNAVAILABLE",
+             "message": "The policy master could not be reached.",
+             "detail": { "dependency": "policy_master", "retryable": true,
+             }}
 ## 6. Status code mapping
+
+| Code | Status | Condition |
+| --- | --- | --- |
+| `SCHEMA_VALIDATION_FAILED` | 400 | body not valid JSON, required field absent, wrong type, undefined field, or a value outside a vocabulary this contract fixes |
+| `UNSUPPORTED_MEDIA_TYPE` | 415 | Content-Type is not application/json |
+| `POLICY_NOT_FOUND` | 422 | V-1|
+| `LOSS_BEFORE_INCEPTION` | 422 | V-2 |
+| `POLICY_CANCELLED` | 422 | V-7 |
+| `LOSS_AFTER_EXPIRY` | 422 | V-3 |
+| `AMOUNT_EXCEEDS_LIMIT` | 422 | V-4 |
+| `TYPE_NOT_COVERED` | 422 | V-5 |
+| `DUPLICATE_NOTIFICATION` | 409 | V-6 |
+| `POLICY_MASTER_INVALID_RESPONSE` | 502 | Policy master answered with something the service cannot parse|
+| `POLICY_MASTER_UNAVAILABLE` | 503 | Policy master unreachable |
+| `POLICY_MASTER_TIMEOUT` | 504 | Policy master accepted the request and did not answer within the read timeout |
+| `INTERNAL_ERROR` | 500 | Any fault inside this service not covered above |
