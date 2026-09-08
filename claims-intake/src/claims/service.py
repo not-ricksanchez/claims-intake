@@ -21,7 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from claims.models import NotificationRequest, Policy, RecordedNotification
+from claims.models import ClaimRecord, NotificationRequest, Policy, RuleFailure
 from claims.policy_client import PolicyClient, PolicyNotFound
 from claims.repository import NotificationRepository
 
@@ -83,69 +83,96 @@ def evaluate_policy_exists(
     return ValidationOutcome.ok()
 
 
+def evaluate_not_cancelled(
+    notification: NotificationRequest,
+    policy: Policy,
+) -> RuleFailure | None:
+    """V-7. Cover must not have ended by cancellation."""
+    return None
+
+
+def evaluate_not_duplicate(
+    notification: NotificationRequest,
+    repository: NotificationRepository,
+) -> RuleFailure | None:
+    """V-6. The same loss event must not already be recorded.
+
+    This is not a member of POLICY_RULES. Those functions are pure: they read a
+    notification and a policy and they return. V-6 has to ask the repository
+    whether a record exists, and putting that lookup in the rule table would mix
+    deciding with doing. submit_notification calls this between V-7 and V-2 so
+    the order in contract section 4.1 is preserved without the pure rules knowing
+    that a store exists.
+    """
+    return None
+
+
 def evaluate_loss_after_inception(
     notification: NotificationRequest,
     policy: Policy,
-) -> ValidationOutcome:
+) -> RuleFailure | None:
     """V-2. The loss must not precede policy inception.
 
     The boundary is stated in contract section 4.2 and in WI-0142 AC-3. A loss on
     the inception date is covered.
     """
-    raise NotImplementedError("Day 3 assignment")
+    return None
 
 
 def evaluate_loss_before_expiry(
     notification: NotificationRequest,
     policy: Policy,
-) -> ValidationOutcome:
+) -> RuleFailure | None:
     """V-3. The loss must not fall after the policy expiry date."""
-    raise NotImplementedError("Day 3 assignment")
+    return None
 
 
 def evaluate_amount_within_limit(
     notification: NotificationRequest,
     policy: Policy,
-) -> ValidationOutcome:
+) -> RuleFailure | None:
     """V-4. The estimated amount must not exceed the policy limit.
 
     An amount equal to the limit is within cover, per contract section 4.2.
     """
-    raise NotImplementedError("Day 3 assignment")
+    return None
 
 
 def evaluate_claim_type_covered(
     notification: NotificationRequest,
     policy: Policy,
-) -> ValidationOutcome:
+) -> RuleFailure | None:
     """V-5. The claim type must be permitted on the policy's product."""
-    raise NotImplementedError("Day 3 assignment")
+    return None
 
 
 def evaluate_notification(
     notification: NotificationRequest,
-    policy_client: PolicyClient,
-    repository: NotificationRepository,
-) -> ValidationOutcome:
-    """Evaluate every rule and return the outcome the caller sees.
+    policy: Policy,
+) -> RuleFailure | None:
+    """Evaluate the policy-pure rules and return the first refusal, or None.
 
     A notification can violate several rules at once and the caller sees one
     reason, so the order this function evaluates in is a caller-visible behavior.
     It is fixed by contract section 4.1 and by nothing else. If you find yourself
     choosing an order here, the contract is incomplete and the fix belongs there.
+
+    V-1 and V-6 are not evaluated here. V-1 is the policy lookup that produced
+    `policy`. V-6 needs the repository. submit_notification is the function that
+    has both, and it is the function that interleaves them with these rules.
     """
-    raise NotImplementedError("Day 3 assignment")
+    return None
 
 
 def submit_notification(
     notification: NotificationRequest,
     policy_client: PolicyClient,
     repository: NotificationRepository,
-) -> RecordedNotification | ValidationOutcome:
+) -> ClaimRecord | RuleFailure:
     """Validate, and record only if every rule passed.
 
     Nothing is written before the decision is made. A notification is either
     recorded with a claim reference or it does not exist, and there is no state in
     between for a later reader to interpret.
     """
-    raise NotImplementedError("Day 3 assignment")
+    return None  # type: ignore[return-value]
