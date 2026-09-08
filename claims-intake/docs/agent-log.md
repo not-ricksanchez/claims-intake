@@ -18,3 +18,10 @@ under `claims-intake/.github/` so it sat next to the package. Actions stayed
 empty. GitHub never saw the file, so ruff/mypy/pytest couldn't fail the PR.
 
 I moved it back to rrot for github to recognize it as a CI pipeline file.
+
+
+## Failing required check blocked the merge:
+
+Changed an assertion in test_validation.py to make the pipeline fail.
+Once the change was pushed, the CI pieplined failed successfully.
+The changes were reverted in a later commit, and now the piepline passes all the checks.
