@@ -103,7 +103,8 @@ def test_v2_loss_after_inception(loss_date: date, expected: RuleFailure | None) 
     notification = _notification(loss_date=loss_date)
     policy = _policy(effective_date=date(2026, 3, 1))
 
-    assert evaluate_loss_after_inception(notification, policy) == expected
+    #assert evaluate_loss_after_inception(notification, policy) == expected
+    assert evaluate_loss_after_inception(notification, policy) == forcefull_fail
 
 
 @pytest.mark.parametrize(
