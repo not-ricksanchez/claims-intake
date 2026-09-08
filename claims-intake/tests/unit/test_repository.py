@@ -9,7 +9,7 @@ from typing import Any, Protocol
 
 import pytest
 
-from claims.models import NotificationRequest
+from claims.models import ClaimRecord, ClaimType, NotificationRequest
 from claims.repository import NotificationRepository
 
 CLAIM_REFERENCE = re.compile(r"^CLM-\d{4}-\d{6}$")
@@ -47,6 +47,8 @@ def test_record_issues_unique_references(
     first = repository.record(make_notification())
     second = repository.record(make_notification(loss_date=date(2026, 4, 3)))
 
+    assert isinstance(first, ClaimRecord)
+    assert isinstance(second, ClaimRecord)
     assert CLAIM_REFERENCE.match(first.claim_reference)
     assert CLAIM_REFERENCE.match(second.claim_reference)
     assert first.claim_reference != second.claim_reference
@@ -77,7 +79,7 @@ def test_two_of_three_is_not_a_duplicate(
     make_notification: NotificationFactory,
     policy_number: str,
     loss_date: date,
-    claim_type: str,
+    claim_type: ClaimType,
 ) -> None:
     repository.record(make_notification())
 
@@ -88,7 +90,8 @@ def test_refused_notification_is_not_a_duplicate(
     repository: NotificationRepository,
     make_notification: NotificationFactory,
 ) -> None:
-    # WI-0151 AC-3: a refusal never calls record, so nothing is stored.
+    # WI-0151 AC-3: a refused submission never reaches record(), so a later
+    # identical submission is the first written record, not a duplicate.
     refused = make_notification()
 
     assert (
@@ -101,4 +104,13 @@ def test_refused_notification_is_not_a_duplicate(
     )
 
     recorded = repository.record(make_notification())
+
     assert recorded.claim_reference.endswith("-000001")
+    assert (
+        repository.find_matching(
+            refused.policy_number,
+            refused.loss_date,
+            refused.claim_type,
+        )
+        is recorded
+    )

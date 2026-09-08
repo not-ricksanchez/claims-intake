@@ -10,7 +10,6 @@ Day 2 assignment. Implement these against `docs/api-contract.md` sections 2 and 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from typing import Literal
@@ -18,6 +17,18 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 ClaimType = Literal["collision", "theft", "glass", "liability", "weather"]
+
+RuleId = Literal["V-1", "V-2", "V-3", "V-4", "V-5", "V-6", "V-7"]
+ErrorCode = Literal[
+    "POLICY_NOT_FOUND",
+    "LOSS_BEFORE_INCEPTION",
+    "POLICY_CANCELLED",
+    "LOSS_AFTER_EXPIRY",
+    "AMOUNT_EXCEEDS_LIMIT",
+    "TYPE_NOT_COVERED",
+    "DUPLICATE_NOTIFICATION",
+]
+
 
 class NotificationRequest(BaseModel):
     """A first notice of loss as submitted by the claims portal.
@@ -39,6 +50,7 @@ class NotificationRequest(BaseModel):
     estimated_amount: Decimal = Field(gt=0, decimal_places=2)
     description: str | None = None
 
+
 class Policy(BaseModel):
     """A policy as this service works with it.
 
@@ -49,14 +61,15 @@ class Policy(BaseModel):
     """
 
     policy_number: str
+    product: str
     effective_date: date
     expiry_date: date
-    cancellation_date: date | None = None
+    cancellation_date: date | None
     limit: Decimal
-    permitted_claim_types: tuple[ClaimType]
+    permitted_claim_types: tuple[ClaimType, ...]
 
 
-class RecordedNotification(BaseModel):
+class ClaimRecord(BaseModel):
     """A notification that passed every rule and was written.
 
     Carries the claim reference issued at the time it was recorded. Contract
@@ -64,6 +77,7 @@ class RecordedNotification(BaseModel):
 
     Day 2 assignment: declare the fields.
     """
+
     claim_reference: str = Field(pattern=r"^CLM-\d{4}-\d{6}$")
     policy_number: str
     loss_date: date
@@ -72,7 +86,17 @@ class RecordedNotification(BaseModel):
     description: str | None = None
 
 
-@dataclass(frozen=True)
-class RuleFailure:
-    rule: str   # e.g. "V-1"
-    code: str   # e.g. "POLICY_NOT_FOUND"
+RecordedNotification = ClaimRecord
+
+
+class RuleFailure(BaseModel):
+    """A business-rule refusal.
+
+    `rule` and `code` are distinct vocabularies so a rule identifier cannot be
+    supplied where an error code is expected. Frozen so a decision cannot be
+    rewritten after the rule has returned.
+    """
+
+    model_config = ConfigDict(frozen=True)
+    rule: RuleId
+    code: ErrorCode
