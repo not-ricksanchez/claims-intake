@@ -18,7 +18,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from claims.api.routes import app, get_policy_client, get_repository  # type: ignore[attr-defined]
+from claims.api.routes import app, get_policy_client, get_repository
 from claims.policy_client import LookupFailureReason, StubPolicyClient
 from claims.repository import NotificationRepository
 
