@@ -36,13 +36,13 @@ uv run mypy src tests
 ```
 
 Those three commands match the CI workflow at `/.github/workflows/checks.yaml`
-and `[tool.mypy]` in `pyproject.toml`. Run them from this directory
-(`claims-intake/`).
+and `[tool.mypy]` in `pyproject.toml`. Run them from the directory that
+contains `pyproject.toml` (the `claims-intake/` package root).
 
 ## Running the service
 
-The HTTP surface is a FastAPI app at `claims.api.routes:app`. From this
-directory, start it with:
+The HTTP surface is a FastAPI app at `claims.api.routes:app`. From the
+directory that contains `pyproject.toml`, start it with:
 
 ```
 uv run uvicorn claims.api.routes:app --host 0.0.0.0 --port 8000
@@ -128,8 +128,9 @@ code. The keys shown are the ones section 5 lists for `LOSS_AFTER_EXPIRY`.
 
 ## Running in a container
 
-The `Dockerfile` in this directory packages the same uvicorn process. Build
-from here (next to `pyproject.toml`):
+The `Dockerfile` packages the same uvicorn process. Build from the directory
+that contains `Dockerfile` and `pyproject.toml` (the `claims-intake/` package
+root):
 
 ```
 docker build -t claims-intake .
@@ -139,8 +140,8 @@ docker build -t claims-intake .
 image for the architecture of the machine that runs the build. That is the
 right command for local use. This repository's local environment is arm64:
 the check in "Working in this repository" (`uname -sm`) prints
-`Linux aarch64`, so a default build here is `linux/arm64` and matches this
-devcontainer.
+`Linux aarch64`, so a default build on this arm64 machine is `linux/arm64` and
+matches the lab devcontainer.
 
 Pass `--platform` only when you are building an image for a *target*
 architecture that is not the build host. For example, producing a `linux/amd64`
@@ -151,8 +152,8 @@ cloud host:
 docker build --platform linux/amd64 -t claims-intake .
 ```
 
-Do not add that flag for a container you intend to run here. It would force
-amd64 emulation on an arm64 machine instead of a native image.
+Do not add that flag for an image you intend to run locally on this arm64
+machine. It would force amd64 emulation instead of a native image.
 
 Run the image, publishing port 8000 to the host:
 
