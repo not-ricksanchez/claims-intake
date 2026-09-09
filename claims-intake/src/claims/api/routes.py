@@ -165,7 +165,21 @@ def _rule_failure_detail(
     }
 
 
-@app.post("/notifications")
+@app.post(
+    "/notifications",
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": NotificationRequest.model_json_schema(),
+                }
+            },
+        }
+    },
+)
+
+
 async def create_notification(
     request: Request,
     policy_client: Annotated[PolicyClient, Depends(get_policy_client)],
