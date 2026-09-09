@@ -17,6 +17,6 @@ __pycache__/
 .env
 *.env
 !example.env
-
+.claude
 # macOS
 .DS_Store
